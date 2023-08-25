@@ -3,15 +3,41 @@
 mod lexer;
 mod parser;
 
-use parser::{ Statement, Expression, ConstAssignmentVal};
+use parser::{ Statement, Expression, ConstAssignmentVal };
+
+macro_rules! println_if {
+	($cond:expr, $($arg:tt)*) => { if $cond { println!($($arg)*) } };
+}
 
 fn main() {
-	let input = std::fs::read_to_string("start.loki").unwrap();
+	let mut filename = None;
+	let mut output_filename = None;
+
+	let mut running_test = false;
+
+	if let Ok(var_running_tests) = std::env::var("LOKI_RUNNING_TESTS") {
+		if var_running_tests == "yes" {
+			running_test = true;
+			
+			if let Ok(file) = std::env::var("LOKI_FILE") {
+				filename = Some(file);
+			}
+
+			if let Ok(file) = std::env::var("LOKI_OUTPUT_FILE") {
+				output_filename = Some(file);
+			}
+		}
+	}
+
+	let filename = filename.unwrap_or("start.loki".to_string());
+	let output_filename = output_filename.unwrap_or_else(|| filename.clone() + ".c");
+
+	let input = std::fs::read_to_string(&filename).unwrap();
 	let tokens = lexer::lex(&input);
-	println!("{tokens:#?}");
+	println_if!(!running_test, "{tokens:#?}");
 
 	let ast = parser::parse(tokens);
-	println!("{ast:#?}");
+	println_if!(!running_test, "{ast:#?}");
 
 	let mut program = "".to_string();
 	for const_assignment in ast.0 {
@@ -27,11 +53,19 @@ fn main() {
 				);
 			},
 
+			ConstAssignmentVal::Expression(expr) if matches!(expr, Expression::Number(_)) && const_assignment.0.starts_with("__t_") => {
+				if let Expression::Number(n) = expr {
+					println_if!(running_test, "{}={}", const_assignment.0, n);
+				} else {
+					panic!();
+				}
+			},
+
 			e => unimplemented!("{e:?}"),
 		}
 	}
 
-	std::fs::write("out.c", program).unwrap();
+	std::fs::write(output_filename, program).unwrap();
 }
 
 fn serialize_statement(statement: Statement) -> String {

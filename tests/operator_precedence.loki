@@ -1,0 +1,5 @@
+__t_expected_status :: 71;
+
+main :: fn() -> int {
+	return 1 + 7 * 10;
+};
