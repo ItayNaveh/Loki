@@ -33,7 +33,7 @@ fn main() {
 	let filename = filename.unwrap_or("start.loki".to_string());
 	let output_filename = output_filename.unwrap_or_else(|| filename.clone() + ".c");
 
-	let input = std::fs::read_to_string(&filename).unwrap();
+	let input = std::fs::read_to_string(&filename).expect(&("Failed to open file ".to_string() + &filename));
 	let tokens = lexer::lex(&input);
 	println_if!(!running_test, "{tokens:#?}");
 
