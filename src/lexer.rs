@@ -1,5 +1,5 @@
 // FIXME: instead of String use like a unique string table (FlyString? in serenity)
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Token {
 	Fn,
 	Return,
@@ -13,6 +13,7 @@ pub enum Token {
 	Comma,
 
 	Plus,
+	Star, // FIXME: maybe asterisk?
 
 	ParenOpen,
 	ParenClose,
@@ -52,6 +53,7 @@ pub fn lex(input: &str) -> Vec<Token> {
 			',' => { tokens.push(Token::Comma); pos += 1 },
 			
 			'+' => { tokens.push(Token::Plus); pos += 1 },
+			'*' => { tokens.push(Token::Star); pos += 1 },
 
 			'(' => { tokens.push(Token::ParenOpen); pos += 1 },
 			')' => { tokens.push(Token::ParenClose); pos += 1 },
