@@ -19,7 +19,7 @@ pub struct ConstAssignment(pub String, pub ConstAssignmentVal);
 
 #[derive(Debug)]
 pub enum ConstAssignmentVal {
-	Function { return_type: Option<String>, body: Vec<Statement> },
+	Function { args: Vec<(String, String)>, return_type: Option<String>, body: Vec<Statement> },
 	Expression(Expression),
 }
 
@@ -62,7 +62,27 @@ fn parse_const_assignment(tokens: &[Token], pos: &mut usize) -> ConstAssignment 
 			assert_eq!(tokens[*pos], Token::ParenOpen);
 			*pos += 1;
 			
-			// TODO: parse args
+			let mut args = Vec::new();
+			while *pos < tokens.len() {
+				if tokens[*pos] == Token::ParenClose { break }
+
+				assert!(is_ident(&tokens[*pos]));
+				let name = expect_ident(&tokens[*pos]).unwrap();
+				*pos += 1;
+				
+				assert_eq!(tokens[*pos], Token::Colon);
+				*pos += 1;
+				
+				assert!(is_ident(&tokens[*pos]));
+				let type_ = expect_ident(&tokens[*pos]).unwrap();
+				*pos += 1;
+				
+				args.push((name.clone(), type_.clone()));
+				if tokens[*pos] == Token::ParenClose { break }
+
+				assert_eq!(tokens[*pos], Token::Comma);
+				*pos += 1;
+			}
 			
 			assert_eq!(tokens[*pos], Token::ParenClose);
 			*pos += 1;
@@ -89,7 +109,7 @@ fn parse_const_assignment(tokens: &[Token], pos: &mut usize) -> ConstAssignment 
 			assert_eq!(tokens[*pos], Token::BraceClose);
 			*pos += 1;
 
-			ConstAssignmentVal::Function { return_type, body }
+			ConstAssignmentVal::Function { args, return_type, body }
 		},
 		_ => ConstAssignmentVal::Expression(parse_expr(tokens, pos)),
 	};

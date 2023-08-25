@@ -3,6 +3,7 @@
 mod lexer;
 mod parser;
 
+use std::fmt::Write;
 use parser::{ Statement, Expression, ConstAssignmentVal };
 
 macro_rules! println_if {
@@ -42,15 +43,16 @@ fn main() {
 	let mut program = "".to_string();
 	for const_assignment in ast.0 {
 		match const_assignment.1 {
-			ConstAssignmentVal::Function { return_type, body } => {
+			ConstAssignmentVal::Function { args, return_type, body } => {
+				let args = args.into_iter().map(|(name, type_)| type_ + " " + &name).collect::<Vec<String>>().join(",");
 				let body = body.into_iter().map(serialize_statement).collect::<String>();
-
-				program += &format!(
-					"{ret} {name} () {{ {body} }}",
+				write!(program,
+					"{ret} {name} ({args}) {{ {body} }}",
 					ret = return_type.unwrap_or("void".to_string()),
 					name = const_assignment.0,
+					args = args,
 					body = body,
-				);
+				).unwrap();
 			},
 
 			ConstAssignmentVal::Expression(expr) if matches!(expr, Expression::Number(_)) && const_assignment.0.starts_with("__t_") => {
@@ -77,8 +79,8 @@ fn serialize_statement(statement: Statement) -> String {
 fn serialize_expression(expr: Expression) -> String {
 	match expr {
 		Expression::Number(n) => n.to_string(),
+		Expression::Ident(ident) => ident,
 		Expression::BinaryOperator { op, left, right } => format!("({}) {} ({})", serialize_expression(*left), serialize_token(op), serialize_expression(*right)),
-		_ => unimplemented!()
 	}
 }
 
