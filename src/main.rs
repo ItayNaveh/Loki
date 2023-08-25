@@ -81,6 +81,10 @@ fn serialize_expression(expr: Expression) -> String {
 		Expression::Number(n) => n.to_string(),
 		Expression::Ident(ident) => ident,
 		Expression::BinaryOperator { op, left, right } => format!("({}) {} ({})", serialize_expression(*left), serialize_token(op), serialize_expression(*right)),
+		Expression::FunctionCall(name, args) => {
+			let args = args.into_iter().map(serialize_expression).collect::<Vec<String>>().join(",");
+			format!("{name}({})", args)
+		},
 	}
 }
 

@@ -30,6 +30,8 @@ pub enum Expression {
 
 	// FIXME: op shouldn't be a Token
 	BinaryOperator { op: Token, left: Box<Expression>, right: Box<Expression> },
+
+	FunctionCall(String, Vec<Expression>),
 }
 
 #[derive(Debug)]
@@ -155,6 +157,23 @@ fn parse_additive(tokens: &[Token], pos: &mut usize) -> Expression {
 fn parse_primary_expr(tokens: &[Token], pos: &mut usize) -> Expression {
 	match tokens[*pos] {
 		Token::Number(n) => { *pos += 1; Expression::Number(n) },
+
+		Token::Ident(ref ident) if tokens[*pos + 1] == Token::ParenOpen => {
+			*pos += 2; // ident + (
+			let mut args = Vec::new();
+			while *pos < tokens.len() && tokens[*pos] != Token::ParenClose {
+				args.push(parse_expr(tokens, pos));
+
+				if tokens[*pos] != Token::Comma { break }
+				*pos += 1;
+			}
+
+			assert_eq!(tokens[*pos], Token::ParenClose);
+			*pos += 1;
+
+			Expression::FunctionCall(ident.clone(), args)
+		},
+
 		Token::Ident(ref ident) => { *pos += 1; Expression::Ident(ident.clone()) },
 
 		ref t => panic!("Unexpected token while parsing expression: {t:?}"),
