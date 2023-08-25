@@ -79,11 +79,10 @@ fn parse_const_assignment(tokens: &[Token], pos: &mut usize) -> ConstAssignment 
 			*pos += 1;
 
 			let mut body = Vec::new();
-			while tokens[*pos] != Token::BraceClose {
+			while *pos < tokens.len() && tokens[*pos] != Token::BraceClose {
 				body.push(parse_statement(tokens, pos));
 			}
 
-			// FIXME: unneeded? (cuz of the while condition)
 			assert_eq!(tokens[*pos], Token::BraceClose);
 			*pos += 1;
 
