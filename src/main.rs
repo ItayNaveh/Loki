@@ -43,6 +43,16 @@ fn serialize_statement(statement: Statement) -> String {
 fn serialize_expression(expr: Expression) -> String {
 	match expr {
 		Expression::Number(n) => n.to_string(),
+		Expression::BinaryOperator { op, left, right } => format!("({}) {} ({})", serialize_expression(*left), serialize_token(op), serialize_expression(*right)),
 		_ => unimplemented!()
+	}
+}
+
+// FIXME: this souldn't need to exist
+fn serialize_token(token: lexer::Token) -> String {
+	match token {
+		lexer::Token::Plus => "+".to_string(),
+		lexer::Token::Star => "*".to_string(),
+		_ => panic!(),
 	}
 }

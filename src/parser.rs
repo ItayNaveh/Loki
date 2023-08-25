@@ -27,6 +27,9 @@ pub enum ConstAssignmentVal {
 pub enum Expression {
 	Number(i64),
 	Ident(String),
+
+	// FIXME: op shouldn't be a Token
+	BinaryOperator { op: Token, left: Box<Expression>, right: Box<Expression> },
 }
 
 #[derive(Debug)]
@@ -98,6 +101,38 @@ fn parse_const_assignment(tokens: &[Token], pos: &mut usize) -> ConstAssignment 
 }
 
 fn parse_expr(tokens: &[Token], pos: &mut usize) -> Expression {
+	parse_additive(tokens, pos)
+}
+
+fn parse_multiplicative(tokens: &[Token], pos: &mut usize) -> Expression {
+	let mut left = parse_primary_expr(tokens, pos);
+	
+	while *pos < tokens.len() && matches!(tokens[*pos], Token::Star) {
+		let op = tokens[*pos].clone();
+		*pos += 1;
+	
+		let right = parse_primary_expr(tokens, pos);
+		left = Expression::BinaryOperator { op, left: Box::new(left), right: Box::new(right) };
+	}
+	
+	left
+}
+
+fn parse_additive(tokens: &[Token], pos: &mut usize) -> Expression {
+	let mut left = parse_multiplicative(tokens, pos);
+
+	while *pos < tokens.len() && matches!(tokens[*pos], Token::Plus) {
+		let op = tokens[*pos].clone();
+		*pos += 1;
+
+		let right = parse_multiplicative(tokens, pos);
+		left = Expression::BinaryOperator { op, left: Box::new(left), right: Box::new(right) };
+	}
+
+	left
+}
+
+fn parse_primary_expr(tokens: &[Token], pos: &mut usize) -> Expression {
 	match tokens[*pos] {
 		Token::Number(n) => { *pos += 1; Expression::Number(n) },
 		Token::Ident(ref ident) => { *pos += 1; Expression::Ident(ident.clone()) },
