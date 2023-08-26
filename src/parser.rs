@@ -70,8 +70,12 @@ impl<'a> Parser<'a> {
 
 	#[must_use]
 	fn consume_ident(&mut self) -> Option<String> {
-		// self.expect_ident().and_then(|x| { self.pos += 1; Some(x) })
-		self.at().ident().and_then(|x| { self.pos += 1; Some(x) })
+		let at = self.at().ident();
+		if at.is_some() {
+			self.pos += 1;
+		}
+
+		at
 	}
 
 	#[must_use]
@@ -117,7 +121,7 @@ impl<'a> Parser<'a> {
 					self.pos += 1;
 
 					let return_type = self.consume_ident().unwrap();
-					Some(return_type.clone())
+					Some(return_type)
 				} else {
 					None
 				};

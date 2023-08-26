@@ -30,7 +30,7 @@ fn main() {
 		}
 	}
 
-	let filename = filename.unwrap_or("stuff.loki".to_string());
+	let filename = filename.unwrap_or_else(|| "stuff.loki".to_string());
 	let output_filename = output_filename.unwrap_or_else(|| filename.clone() + ".c");
 
 	let input = std::fs::read_to_string(&filename).expect(&("Failed to open file ".to_string() + &filename));
@@ -48,7 +48,7 @@ fn main() {
 				let body = body.into_iter().map(serialize_statement).collect::<String>();
 				write!(program,
 					"{ret} {name} ({args}) {{ {body} }}",
-					ret = return_type.unwrap_or("void".to_string()),
+					ret = return_type.unwrap_or_else(|| "void".to_string()),
 					name = const_assignment.0,
 					args = args,
 					body = body,
