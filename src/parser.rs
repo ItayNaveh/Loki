@@ -24,13 +24,19 @@ pub enum ConstAssignmentVal {
 }
 
 #[derive(Debug)]
+pub enum Operator {
+	Equals,
+	Plus,
+	Multiply,
+}
+
+#[derive(Debug)]
 pub enum Expression {
 	NumberLiteral(i64),
 	StringLiteral(String),
 	Ident(String),
 
-	// FIXME: op shouldn't be a Token
-	BinaryOperator { op: Token, left: Box<Expression>, right: Box<Expression> },
+	BinaryOperator { op: Operator, left: Box<Expression>, right: Box<Expression> },
 
 	FunctionCall(String, Vec<Expression>),
 }
@@ -44,6 +50,19 @@ pub enum Statement {
 
 pub fn parse(tokens: Vec<Token>) -> AstRoot {
 	Parser { tokens: &tokens, pos: 0 }.parse()
+}
+
+impl TryFrom<&Token> for Operator {
+	type Error = ();
+
+	fn try_from(token: &Token) -> Result<Self, Self::Error> {
+		match token {
+			Token::Equals => Ok(Self::Equals),
+			Token::Plus => Ok(Self::Plus),
+			Token::Star => Ok(Self::Multiply),
+			_ => Err(()),
+		}
+	}
 }
 
 struct Parser<'a> {
@@ -156,7 +175,7 @@ impl<'a> Parser<'a> {
 		while *self.at() == Token::Equals {
 			self.pos += 1;
 			let right = self.parse_additive();
-			left = Expression::BinaryOperator { op: Token::Equals, left: Box::new(left), right: Box::new(right) };
+			left = Expression::BinaryOperator { op: Operator::Equals, left: Box::new(left), right: Box::new(right) };
 		}
 
 		return left;
@@ -166,7 +185,7 @@ impl<'a> Parser<'a> {
 		let mut left = self.parse_multiplicative();
 
 		while matches!(self.at(), Token::Plus) {
-			let op = self.at().clone();
+			let op = Operator::try_from(self.at()).unwrap();
 			self.pos += 1;
 
 			let right = self.parse_multiplicative();
@@ -177,17 +196,22 @@ impl<'a> Parser<'a> {
 	}
 
 	fn parse_multiplicative(&mut self) -> Expression {
-		let mut left = self.parse_primary_expr();
+		let mut left = self.parse_unary_rtl();
 
 		while matches!(self.at(), Token::Star) {
-			let op = self.at().clone();
+			let op = Operator::try_from(self.at()).unwrap();
 			self.pos += 1;
 
-			let right = self.parse_primary_expr();
+			let right = self.parse_unary_rtl();
 			left = Expression::BinaryOperator { op, left: Box::new(left), right: Box::new(right) };
 		}
 
 		left
+	}
+
+	fn parse_unary_rtl(&mut self) -> Expression {
+		// while matches!(self.at(), )
+		self.parse_primary_expr()
 	}
 
 	fn parse_primary_expr(&mut self) -> Expression {
@@ -195,6 +219,7 @@ impl<'a> Parser<'a> {
 			Token::NumberLiteral(n) => { self.pos += 1; Expression::NumberLiteral(n) },
 			Token::StringLiteral(ref s) => { self.pos += 1; Expression::StringLiteral(s.clone()) },
 
+			// TODO: this needs to be an actual operator
 			Token::Ident(ref ident) if self.tokens[self.pos + 1] == Token::ParenOpen => {
 				self.pos += 2; // ident + (
 				let mut args = Vec::new();

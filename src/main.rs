@@ -4,7 +4,7 @@ mod lexer;
 mod parser;
 
 use std::fmt::Write;
-use parser::{ Statement, Expression, ConstAssignmentVal };
+use parser::{ Statement, Expression, ConstAssignmentVal, Operator };
 
 fn main() {
 	let mut args = std::env::args().into_iter().skip(1);
@@ -136,7 +136,7 @@ fn serialize_expression(expr: Expression) -> String {
 		Expression::NumberLiteral(n) => n.to_string(),
 		Expression::StringLiteral(s) => '"'.to_string() + &s + "\"",
 		Expression::Ident(ident) => ident,
-		Expression::BinaryOperator { op, left, right } => format!("({}) {} ({})", serialize_expression(*left), serialize_token(op), serialize_expression(*right)),
+		Expression::BinaryOperator { op, left, right } => format!("(({}) {} ({}))", serialize_expression(*left), serialize_operator(op), serialize_expression(*right)),
 		Expression::FunctionCall(name, args) => {
 			let args = args.into_iter().map(serialize_expression).collect::<Vec<String>>().join(",");
 			format!("{name}({})", args)
@@ -144,12 +144,10 @@ fn serialize_expression(expr: Expression) -> String {
 	}
 }
 
-// FIXME: this souldn't need to exist
-fn serialize_token(token: lexer::Token) -> String {
-	match token {
-		lexer::Token::Plus => "+".to_string(),
-		lexer::Token::Star => "*".to_string(),
-		lexer::Token::Equals => "=".to_string(),
-		_ => panic!(),
+fn serialize_operator(op: Operator) -> String {
+	match op {
+		Operator::Equals => '='.to_string(),
+		Operator::Plus => '+'.to_string(),
+		Operator::Multiply => '*'.to_string(),
 	}
 }
