@@ -30,15 +30,15 @@ fn main() {
 		}
 	}
 
-	let filename = filename.unwrap_or("start.loki".to_string());
+	let filename = filename.unwrap_or("stuff.loki".to_string());
 	let output_filename = output_filename.unwrap_or_else(|| filename.clone() + ".c");
 
 	let input = std::fs::read_to_string(&filename).expect(&("Failed to open file ".to_string() + &filename));
 	let tokens = lexer::lex(&input);
-	println_if!(!running_test, "{tokens:#?}");
+	// println_if!(!running_test, "{tokens:#?}");
 
 	let ast = parser::parse(tokens);
-	println_if!(!running_test, "{ast:#?}");
+	// println_if!(!running_test, "{ast:#?}");
 
 	let mut program = "".to_string();
 	for const_assignment in ast.0 {
@@ -55,8 +55,8 @@ fn main() {
 				).unwrap();
 			},
 
-			ConstAssignmentVal::Expression(expr) if matches!(expr, Expression::Number(_)) && const_assignment.0.starts_with("__t_") => {
-				if let Expression::Number(n) = expr {
+			ConstAssignmentVal::Expression(expr) if matches!(expr, Expression::NumberLiteral(_)) && const_assignment.0.starts_with("__t_") => {
+				if let Expression::NumberLiteral(n) = expr {
 					println_if!(running_test, "{}={}", const_assignment.0, n);
 				} else {
 					panic!();
@@ -73,12 +73,14 @@ fn main() {
 fn serialize_statement(statement: Statement) -> String {
 	match statement {
 		Statement::Return(expr) => format!("return {};", serialize_expression(expr)),
+		Statement::Expression(expr) => serialize_expression(expr) + ";",
 	}
 }
 
 fn serialize_expression(expr: Expression) -> String {
 	match expr {
-		Expression::Number(n) => n.to_string(),
+		Expression::NumberLiteral(n) => n.to_string(),
+		Expression::StringLiteral(s) => '"'.to_string() + &s + "\"",
 		Expression::Ident(ident) => ident,
 		Expression::BinaryOperator { op, left, right } => format!("({}) {} ({})", serialize_expression(*left), serialize_token(op), serialize_expression(*right)),
 		Expression::FunctionCall(name, args) => {

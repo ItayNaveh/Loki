@@ -25,7 +25,8 @@ pub enum ConstAssignmentVal {
 
 #[derive(Debug)]
 pub enum Expression {
-	Number(i64),
+	NumberLiteral(i64),
+	StringLiteral(String),
 	Ident(String),
 
 	// FIXME: op shouldn't be a Token
@@ -37,6 +38,7 @@ pub enum Expression {
 #[derive(Debug)]
 pub enum Statement {
 	Return(Expression),
+	Expression(Expression),
 }
 
 pub fn parse(tokens: Vec<Token>) -> AstRoot {
@@ -156,7 +158,8 @@ fn parse_additive(tokens: &[Token], pos: &mut usize) -> Expression {
 
 fn parse_primary_expr(tokens: &[Token], pos: &mut usize) -> Expression {
 	match tokens[*pos] {
-		Token::Number(n) => { *pos += 1; Expression::Number(n) },
+		Token::NumberLiteral(n) => { *pos += 1; Expression::NumberLiteral(n) },
+		Token::StringLiteral(ref s) => { *pos += 1; Expression::StringLiteral(s.clone()) },
 
 		Token::Ident(ref ident) if tokens[*pos + 1] == Token::ParenOpen => {
 			*pos += 2; // ident + (
@@ -192,7 +195,16 @@ fn parse_statement(tokens: &[Token], pos: &mut usize) -> Statement {
 			Statement::Return(expr)
 		},
 
-		ref t => panic!("Unexpected token while parsing statement: {t:?}"),
+		_ => {
+			let expr = parse_expr(tokens, pos);
+
+			assert_eq!(tokens[*pos], Token::Semicolon);
+			*pos += 1;
+
+			Statement::Expression(expr)
+		},
+
+		// ref t => panic!("Unexpected token while parsing statement: {t:?}"),
 	}
 }
 

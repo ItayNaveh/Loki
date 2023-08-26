@@ -21,7 +21,8 @@ pub enum Token {
 	BraceClose,
 
 	Ident(String),
-	Number(i64),
+	NumberLiteral(i64),
+	StringLiteral(String),
 }
 
 pub fn lex(input: &str) -> Vec<Token> {
@@ -60,6 +61,17 @@ pub fn lex(input: &str) -> Vec<Token> {
 			'{' => { tokens.push(Token::BraceOpen); pos += 1 },
 			'}' => { tokens.push(Token::BraceClose); pos += 1 },
 
+			// TODO: handle things like \n, \"
+			'"' => {
+				pos += 1;
+				let start = pos;
+				while pos < input.len() && input[pos] != '"' { pos += 1 }
+				assert_eq!(input[pos], '"');
+				let str = String::from_iter(&input[start..pos]);
+				pos += 1;
+				tokens.push(Token::StringLiteral(str));
+			},
+
 			c if is_ident_start(c) => {
 				let start = pos;
 				pos += 1;
@@ -72,12 +84,12 @@ pub fn lex(input: &str) -> Vec<Token> {
 				});
 			},
 
-			// FIXME: handle different bases (, and also like U / L suffixes)
+			// FIXME: handle different bases (and also like U / L suffixes)
 			'0'..='9' => {
 				let start = pos;
 				pos += 1;
 				while pos < input.len() && matches!(input[pos], '0'..='9') { pos += 1 }
-				tokens.push(Token::Number(String::from_iter(&input[start..pos]).parse().unwrap()));
+				tokens.push(Token::NumberLiteral(String::from_iter(&input[start..pos]).parse().unwrap()));
 			},
 
 			c => unimplemented!("Unexpected character: {c}"),
