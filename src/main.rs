@@ -6,10 +6,6 @@ mod parser;
 use std::fmt::Write;
 use parser::{ Statement, Expression, ConstAssignmentVal };
 
-macro_rules! println_if {
-	($cond:expr, $($arg:tt)*) => { if $cond { println!($($arg)*) } };
-}
-
 fn main() {
 	let mut args = std::env::args().into_iter().skip(1);
 
@@ -92,10 +88,10 @@ fn compile(input_file: &str) -> String {
 
 	let input = std::fs::read_to_string(input_file).expect(&("Failed to open file ".to_string() + input_file));
 	let tokens = lexer::lex(&input);
-	// println_if!(!running_test, "{tokens:#?}");
+	// println!("{tokens:#?}");
 
 	let ast = parser::parse(tokens);
-	// println_if!(!running_test, "{ast:#?}");
+	// println!("{ast:#?}");
 
 	let mut program = "".to_string();
 	for const_assignment in ast.0 {
@@ -114,7 +110,7 @@ fn compile(input_file: &str) -> String {
 
 			ConstAssignmentVal::Expression(expr) if matches!(expr, Expression::NumberLiteral(_)) && const_assignment.0.starts_with("__t_") => {
 				if let Expression::NumberLiteral(n) = expr {
-					println_if!(running_test, "{}={}", const_assignment.0, n);
+					if running_test { println!("{}={}", const_assignment.0, n) }
 				} else {
 					panic!();
 				}
@@ -153,6 +149,7 @@ fn serialize_token(token: lexer::Token) -> String {
 	match token {
 		lexer::Token::Plus => "+".to_string(),
 		lexer::Token::Star => "*".to_string(),
+		lexer::Token::Equals => "=".to_string(),
 		_ => panic!(),
 	}
 }

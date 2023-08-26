@@ -147,7 +147,19 @@ impl<'a> Parser<'a> {
 	}
 
 	fn parse_expr(&mut self) -> Expression {
-		self.parse_additive()
+		self.parse_assignment()
+	}
+
+	fn parse_assignment(&mut self) -> Expression {
+		let mut left = self.parse_additive();
+
+		while *self.at() == Token::Equals {
+			self.pos += 1;
+			let right = self.parse_additive();
+			left = Expression::BinaryOperator { op: Token::Equals, left: Box::new(left), right: Box::new(right) };
+		}
+
+		return left;
 	}
 
 	fn parse_additive(&mut self) -> Expression {

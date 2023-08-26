@@ -1,0 +1,7 @@
+__t_expected_status :: 4;
+
+main :: fn() -> int {
+	let a: int = 2;
+	a = a + 2;
+	return a;
+};
