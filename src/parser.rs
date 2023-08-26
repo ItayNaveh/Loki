@@ -219,6 +219,14 @@ impl<'a> Parser<'a> {
 			Token::NumberLiteral(n) => { self.pos += 1; Expression::NumberLiteral(n) },
 			Token::StringLiteral(ref s) => { self.pos += 1; Expression::StringLiteral(s.clone()) },
 
+			Token::ParenOpen => {
+				self.pos += 1;
+				let expr = self.parse_expr();
+				self.consume(Token::ParenClose).unwrap();
+
+				expr
+			},
+
 			// TODO: this needs to be an actual operator
 			Token::Ident(ref ident) if self.tokens[self.pos + 1] == Token::ParenOpen => {
 				self.pos += 2; // ident + (
