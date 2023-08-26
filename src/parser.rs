@@ -28,6 +28,7 @@ pub enum Operator {
 	Equals,
 	Plus,
 	Multiply,
+	Deref,
 }
 
 #[derive(Debug)]
@@ -37,6 +38,7 @@ pub enum Expression {
 	Ident(String),
 
 	BinaryOperator { op: Operator, left: Box<Expression>, right: Box<Expression> },
+	UnaryOperator { op: Operator, operand: Box<Expression> },
 
 	FunctionCall(String, Vec<Expression>),
 }
@@ -52,15 +54,21 @@ pub fn parse(tokens: Vec<Token>) -> AstRoot {
 	Parser { tokens: &tokens, pos: 0 }.parse()
 }
 
-impl TryFrom<&Token> for Operator {
-	type Error = ();
-
-	fn try_from(token: &Token) -> Result<Self, Self::Error> {
+impl Operator {
+	fn to_binary_op(token: &Token) -> Option<Self> {
 		match token {
-			Token::Equals => Ok(Self::Equals),
-			Token::Plus => Ok(Self::Plus),
-			Token::Star => Ok(Self::Multiply),
-			_ => Err(()),
+			Token::Equals => Some(Self::Equals),
+			Token::Plus => Some(Self::Plus),
+			Token::Star => Some(Self::Multiply),
+			_ => None,
+		}
+	}
+
+	fn to_unary_op(token: &Token) -> Option<Self> {
+		match token {
+			Token::Plus => Some(Self::Plus),
+			Token::Star => Some(Self::Deref),
+			_ => None,
 		}
 	}
 }
@@ -185,7 +193,7 @@ impl<'a> Parser<'a> {
 		let mut left = self.parse_multiplicative();
 
 		while matches!(self.at(), Token::Plus) {
-			let op = Operator::try_from(self.at()).unwrap();
+			let op = Operator::to_binary_op(self.at()).unwrap();
 			self.pos += 1;
 
 			let right = self.parse_multiplicative();
@@ -199,7 +207,7 @@ impl<'a> Parser<'a> {
 		let mut left = self.parse_unary_rtl();
 
 		while matches!(self.at(), Token::Star) {
-			let op = Operator::try_from(self.at()).unwrap();
+			let op = Operator::to_binary_op(self.at()).unwrap();
 			self.pos += 1;
 
 			let right = self.parse_unary_rtl();
@@ -210,7 +218,14 @@ impl<'a> Parser<'a> {
 	}
 
 	fn parse_unary_rtl(&mut self) -> Expression {
-		// while matches!(self.at(), )
+		if matches!(self.at(), Token::Star | Token::Plus) {
+			let op = Operator::to_unary_op(self.at()).unwrap();
+			self.pos += 1;
+
+			// AA: should this be a parse_unary_rtl or parse_expr?
+			return Expression::UnaryOperator { op, operand: Box::new(self.parse_unary_rtl()) };
+		}
+
 		self.parse_primary_expr()
 	}
 
@@ -267,6 +282,7 @@ impl<'a> Parser<'a> {
 				self.consume(Token::Colon).unwrap();
 				
 				let mut type_ = self.consume_ident().unwrap();
+				// TODO: this is a bit of a hack, need to properly parse types
 				while *self.at() == Token::Star {
 					type_.push('*');
 					self.pos += 1;

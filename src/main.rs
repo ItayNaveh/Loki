@@ -136,7 +136,10 @@ fn serialize_expression(expr: Expression) -> String {
 		Expression::NumberLiteral(n) => n.to_string(),
 		Expression::StringLiteral(s) => '"'.to_string() + &s + "\"",
 		Expression::Ident(ident) => ident,
-		Expression::BinaryOperator { op, left, right } => format!("(({}) {} ({}))", serialize_expression(*left), serialize_operator(op), serialize_expression(*right)),
+
+		Expression::BinaryOperator { op, left, right } => format!("({} {} {})", serialize_expression(*left), serialize_operator(op), serialize_expression(*right)),
+		Expression::UnaryOperator { op, operand } => format!("({}{})", serialize_operator(op), serialize_expression(*operand)),
+
 		Expression::FunctionCall(name, args) => {
 			let args = args.into_iter().map(serialize_expression).collect::<Vec<String>>().join(",");
 			format!("{name}({})", args)
@@ -148,6 +151,6 @@ fn serialize_operator(op: Operator) -> String {
 	match op {
 		Operator::Equals => '='.to_string(),
 		Operator::Plus => '+'.to_string(),
-		Operator::Multiply => '*'.to_string(),
+		Operator::Multiply | Operator::Deref => '*'.to_string(),
 	}
 }
