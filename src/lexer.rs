@@ -3,6 +3,7 @@
 pub enum Token {
 	Fn,
 	Return,
+	Let,
 
 	// FIXME: maybe it should be 2 Colon tokens
 	// https://odin-lang.org/docs/faq/#what-does--mean-1
@@ -14,6 +15,7 @@ pub enum Token {
 
 	Plus,
 	Star, // FIXME: maybe asterisk?
+	Equals,
 
 	ParenOpen,
 	ParenClose,
@@ -64,6 +66,7 @@ pub fn lex(input: &str) -> Vec<Token> {
 			
 			'+' => { tokens.push(Token::Plus); pos += 1 },
 			'*' => { tokens.push(Token::Star); pos += 1 },
+			'=' => { tokens.push(Token::Equals); pos += 1 },
 
 			'(' => { tokens.push(Token::ParenOpen); pos += 1 },
 			')' => { tokens.push(Token::ParenClose); pos += 1 },
@@ -89,6 +92,7 @@ pub fn lex(input: &str) -> Vec<Token> {
 				tokens.push(match ident.as_str() {
 					"fn" => Token::Fn,
 					"return" => Token::Return,
+					"let" => Token::Let,
 					_ => Token::Ident(ident),
 				});
 			},

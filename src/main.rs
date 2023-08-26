@@ -130,6 +130,7 @@ fn compile(input_file: &str) -> String {
 fn serialize_statement(statement: Statement) -> String {
 	match statement {
 		Statement::Return(expr) => format!("return {};", serialize_expression(expr)),
+		Statement::Let(name, type_, val) => format!("{type_} {name} = {};", serialize_expression(val)),
 		Statement::Expression(expr) => serialize_expression(expr) + ";",
 	}
 }

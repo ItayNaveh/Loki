@@ -38,6 +38,7 @@ pub enum Expression {
 #[derive(Debug)]
 pub enum Statement {
 	Return(Expression),
+	Let(String, String, Expression),
 	Expression(Expression),
 }
 
@@ -149,20 +150,6 @@ impl<'a> Parser<'a> {
 		self.parse_additive()
 	}
 
-	fn parse_multiplicative(&mut self) -> Expression {
-		let mut left = self.parse_primary_expr();
-
-		while matches!(self.at(), Token::Star) {
-			let op = self.at().clone();
-			self.pos += 1;
-
-			let right = self.parse_primary_expr();
-			left = Expression::BinaryOperator { op, left: Box::new(left), right: Box::new(right) };
-		}
-
-		left
-	}
-
 	fn parse_additive(&mut self) -> Expression {
 		let mut left = self.parse_multiplicative();
 
@@ -171,6 +158,20 @@ impl<'a> Parser<'a> {
 			self.pos += 1;
 
 			let right = self.parse_multiplicative();
+			left = Expression::BinaryOperator { op, left: Box::new(left), right: Box::new(right) };
+		}
+
+		left
+	}
+
+	fn parse_multiplicative(&mut self) -> Expression {
+		let mut left = self.parse_primary_expr();
+
+		while matches!(self.at(), Token::Star) {
+			let op = self.at().clone();
+			self.pos += 1;
+
+			let right = self.parse_primary_expr();
 			left = Expression::BinaryOperator { op, left: Box::new(left), right: Box::new(right) };
 		}
 
@@ -212,6 +213,26 @@ impl<'a> Parser<'a> {
 				self.consume(Token::Semicolon).unwrap();
 
 				Statement::Return(expr)
+			},
+
+			Token::Let => {
+				self.pos += 1;
+
+				let name = self.consume_ident().unwrap();
+				self.consume(Token::Colon).unwrap();
+				
+				let mut type_ = self.consume_ident().unwrap();
+				while *self.at() == Token::Star {
+					type_.push('*');
+					self.pos += 1;
+				}
+
+				self.consume(Token::Equals).unwrap();
+
+				let val = self.parse_expr();
+				self.consume(Token::Semicolon).unwrap();
+
+				Statement::Let(name, type_, val)
 			},
 
 			_ => {
