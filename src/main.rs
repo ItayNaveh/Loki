@@ -11,29 +11,86 @@ macro_rules! println_if {
 }
 
 fn main() {
-	let mut filename = None;
-	let mut output_filename = None;
+	let mut args = std::env::args().into_iter().skip(1);
 
-	let mut running_test = false;
+	let mut input_file = None;
+	let mut output_file = None;
 
-	if let Ok(var_running_tests) = std::env::var("LOKI_RUNNING_TESTS") {
-		if var_running_tests == "yes" {
-			running_test = true;
-			
-			if let Ok(file) = std::env::var("LOKI_FILE") {
-				filename = Some(file);
-			}
+	#[derive(Debug)] enum Emit {
+		C, BinClang,
+	}
+	let mut emit = None;
 
-			if let Ok(file) = std::env::var("LOKI_OUTPUT_FILE") {
-				output_filename = Some(file);
-			}
+	while let Some(arg) = args.next() {
+		match arg.as_str() {
+			"--emit" => {
+				if emit.is_some() {
+					panic!("Already specified emit")
+				}
+
+				let to = args.next().unwrap();
+				emit = Some(match to.as_str() {
+					"c" => Emit::C,
+					"bin-clang" => Emit::BinClang,
+					t => panic!("Unknown emit type {t}"),
+				});
+			},
+
+			"-o" => {
+				if output_file.is_some() {
+					panic!("Already specified output file")
+				}
+
+				let out = args.next().unwrap();
+				output_file = Some(out);
+			},
+
+			f if !f.starts_with("-") && input_file.is_none() => input_file = Some(arg),
+			_ => panic!("Unknown argument {arg}"),
 		}
 	}
 
-	let filename = filename.unwrap_or_else(|| "stuff.loki".to_string());
-	let output_filename = output_filename.unwrap_or_else(|| filename.clone() + ".c");
+	let input_file = input_file.unwrap();
+	let emit = emit.unwrap_or(Emit::BinClang);
+	let output_file = output_file.unwrap_or_else(|| {
+		std::path::Path::new(&input_file).file_stem().unwrap().to_str().unwrap().to_string() + match emit {
+			Emit::C => ".c",
+			Emit::BinClang => ".exe",
+		}
+	});
 
-	let input = std::fs::read_to_string(&filename).expect(&("Failed to open file ".to_string() + &filename));
+	// println!("Compiling {input_file} to {output_file} as {emit:?}");
+	let compiler_output = compile(&input_file);
+	match emit {
+		Emit::C => std::fs::write(output_file, compiler_output).unwrap(),
+		Emit::BinClang => {
+			use std::process::*;
+			use std::io::Write;
+
+			let mut clang = Command::new("clang")
+				.arg("-x").arg("c")
+				.arg("-")
+				.arg("-o").arg(output_file)
+				.stdin(Stdio::piped()).spawn().unwrap();
+			let mut stdin = clang.stdin.take().unwrap();
+			std::thread::spawn(move || {
+				stdin.write_all(compiler_output.as_bytes()).unwrap();
+			});
+
+			if !clang.wait().unwrap().success() {
+				panic!("Clang errored");
+			}
+		},
+	}
+}
+
+fn compile(input_file: &str) -> String {
+	let mut running_test = false;
+	if let Ok(var_running_tests) = std::env::var("LOKI_RUNNING_TESTS") {
+		running_test = var_running_tests == "yes";
+	}
+
+	let input = std::fs::read_to_string(input_file).expect(&("Failed to open file ".to_string() + input_file));
 	let tokens = lexer::lex(&input);
 	// println_if!(!running_test, "{tokens:#?}");
 
@@ -67,7 +124,7 @@ fn main() {
 		}
 	}
 
-	std::fs::write(output_filename, program).unwrap();
+	return program;
 }
 
 fn serialize_statement(statement: Statement) -> String {
