@@ -24,15 +24,12 @@ function die(msg: string): never {
 async function run_test(name: string) {
 	name = path.parse(name).name;
 	const test_file = `tests/${name}.loki`;
-	const out_c_file = `target/tests/${name}.c`;
+	// const out_c_file = `target/tests/${name}.c`;
 	const out_exe_file = `target/tests/${name}.exe`;
 
 	const compiler_out = await new Deno.Command("target/debug/loki.exe", {
-		env: {
-			"LOKI_RUNNING_TESTS": "yes",
-			"LOKI_FILE": test_file,
-			"LOKI_OUTPUT_FILE": out_c_file,
-		},
+		args: [ test_file, "-o", out_exe_file ],
+		env: { "LOKI_RUNNING_TESTS": "yes" },
 		stderr: "inherit",
 	}).output();
 
@@ -40,7 +37,7 @@ async function run_test(name: string) {
 		die(`[${name}] The compiler emitted errors / panicked`);
 	}
 
-	await run_cmd(`clang ${out_c_file} -o ${out_exe_file}`, `[${name}] Clang errored`);
+	// await run_cmd(`clang ${out_c_file} -o ${out_exe_file}`, `[${name}] Clang errored`);
 
 	const out = await new Deno.Command(out_exe_file).output();
 
