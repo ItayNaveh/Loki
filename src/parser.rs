@@ -42,171 +42,185 @@ pub enum Statement {
 }
 
 pub fn parse(tokens: Vec<Token>) -> AstRoot {
-	let mut pos = 0;
-	let mut root = Vec::new();
+	Parser { tokens: &tokens, pos: 0 }.parse()
+}
 
-	while pos < tokens.len() {
-		root.push(parse_const_assignment(&tokens, &mut pos));
+struct Parser<'a> {
+	tokens: &'a [Token],
+	pos: usize,
+}
+
+impl<'a> Parser<'a> {
+	fn parse(mut self) -> AstRoot {
+		let mut root = Vec::new();
+		while self.pos < self.tokens.len() {
+			root.push(self.parse_const_assignment());
+		}
+
+		return AstRoot(root);
 	}
 
-	return AstRoot(root);
-}
+	#[inline(always)]
+	const fn at(&self) -> &Token { &self.tokens[self.pos] }
 
-fn parse_const_assignment(tokens: &[Token], pos: &mut usize) -> ConstAssignment {
-	assert!(is_ident(&tokens[*pos]));
-	let ident = expect_ident(&tokens[*pos]).unwrap();
-	*pos += 1;
-	
-	assert_eq!(tokens[*pos], Token::ColonColon);
-	*pos += 1;
-	
-	let val = match tokens[*pos] {
-		Token::Fn => {
-			*pos += 1;
-			assert_eq!(tokens[*pos], Token::ParenOpen);
-			*pos += 1;
-			
-			let mut args = Vec::new();
-			while *pos < tokens.len() {
-				if tokens[*pos] == Token::ParenClose { break }
+	// fn expect_ident(&self) -> Option<String> { match self.at() {
+	// 	Token::Ident(ident) => Some(ident.clone()),
+	// 	_ => None,
+	// } }
 
-				assert!(is_ident(&tokens[*pos]));
-				let name = expect_ident(&tokens[*pos]).unwrap();
-				*pos += 1;
-				
-				assert_eq!(tokens[*pos], Token::Colon);
-				*pos += 1;
-				
-				assert!(is_ident(&tokens[*pos]));
-				let type_ = expect_ident(&tokens[*pos]).unwrap();
-				*pos += 1;
-				
-				args.push((name.clone(), type_.clone()));
-				if tokens[*pos] == Token::ParenClose { break }
-
-				assert_eq!(tokens[*pos], Token::Comma);
-				*pos += 1;
-			}
-			
-			assert_eq!(tokens[*pos], Token::ParenClose);
-			*pos += 1;
-			
-			let return_type = if tokens[*pos] == Token::Arrow {
-				*pos += 1;
-				assert!(is_ident(&tokens[*pos]));
-				let return_type = expect_ident(&tokens[*pos]).unwrap();
-				*pos += 1;
-
-				Some(return_type.clone())
-			} else {
-				None
-			};
-
-			assert_eq!(tokens[*pos], Token::BraceOpen);
-			*pos += 1;
-
-			let mut body = Vec::new();
-			while *pos < tokens.len() && tokens[*pos] != Token::BraceClose {
-				body.push(parse_statement(tokens, pos));
-			}
-
-			assert_eq!(tokens[*pos], Token::BraceClose);
-			*pos += 1;
-
-			ConstAssignmentVal::Function { args, return_type, body }
-		},
-		_ => ConstAssignmentVal::Expression(parse_expr(tokens, pos)),
-	};
-
-	assert_eq!(tokens[*pos], Token::Semicolon);
-	*pos += 1;
-
-	ConstAssignment(ident.clone(), val)
-}
-
-fn parse_expr(tokens: &[Token], pos: &mut usize) -> Expression {
-	parse_additive(tokens, pos)
-}
-
-fn parse_multiplicative(tokens: &[Token], pos: &mut usize) -> Expression {
-	let mut left = parse_primary_expr(tokens, pos);
-	
-	while *pos < tokens.len() && matches!(tokens[*pos], Token::Star) {
-		let op = tokens[*pos].clone();
-		*pos += 1;
-	
-		let right = parse_primary_expr(tokens, pos);
-		left = Expression::BinaryOperator { op, left: Box::new(left), right: Box::new(right) };
-	}
-	
-	left
-}
-
-fn parse_additive(tokens: &[Token], pos: &mut usize) -> Expression {
-	let mut left = parse_multiplicative(tokens, pos);
-
-	while *pos < tokens.len() && matches!(tokens[*pos], Token::Plus) {
-		let op = tokens[*pos].clone();
-		*pos += 1;
-
-		let right = parse_multiplicative(tokens, pos);
-		left = Expression::BinaryOperator { op, left: Box::new(left), right: Box::new(right) };
+	#[must_use]
+	fn consume_ident(&mut self) -> Option<String> {
+		// self.expect_ident().and_then(|x| { self.pos += 1; Some(x) })
+		self.at().ident().and_then(|x| { self.pos += 1; Some(x) })
 	}
 
-	left
-}
+	#[must_use]
+	fn consume(&mut self, token: Token) -> Option<()> {
+		if std::mem::discriminant(self.at()) == std::mem::discriminant(&token) {
+			self.pos += 1;
+			Some(())
+		} else {
+			None
+		}
+	}
 
-fn parse_primary_expr(tokens: &[Token], pos: &mut usize) -> Expression {
-	match tokens[*pos] {
-		Token::NumberLiteral(n) => { *pos += 1; Expression::NumberLiteral(n) },
-		Token::StringLiteral(ref s) => { *pos += 1; Expression::StringLiteral(s.clone()) },
+	fn parse_const_assignment(&mut self) -> ConstAssignment {
+		let ident = self.consume_ident().unwrap();
 
-		Token::Ident(ref ident) if tokens[*pos + 1] == Token::ParenOpen => {
-			*pos += 2; // ident + (
-			let mut args = Vec::new();
-			while *pos < tokens.len() && tokens[*pos] != Token::ParenClose {
-				args.push(parse_expr(tokens, pos));
+		self.consume(Token::ColonColon).unwrap();
 
-				if tokens[*pos] != Token::Comma { break }
-				*pos += 1;
-			}
+		let val = match self.at() {
+			Token::Fn => {
+				self.pos += 1;
 
-			assert_eq!(tokens[*pos], Token::ParenClose);
-			*pos += 1;
+				self.consume(Token::ParenOpen).unwrap();
 
-			Expression::FunctionCall(ident.clone(), args)
-		},
+				let mut args = Vec::new();
+				while self.pos < self.tokens.len() {
+					if *self.at() == Token::ParenClose { break }
 
-		Token::Ident(ref ident) => { *pos += 1; Expression::Ident(ident.clone()) },
+					let name = self.consume_ident().unwrap();
 
-		ref t => panic!("Unexpected token while parsing expression: {t:?}"),
+					self.consume(Token::Colon).unwrap();
+
+					let type_ = self.consume_ident().unwrap();
+
+					args.push((name.clone(), type_.clone()));
+					if *self.at() == Token::ParenClose { break }
+
+					self.consume(Token::Comma).unwrap();
+				}
+
+				self.consume(Token::ParenClose).unwrap();
+
+				let return_type = if *self.at() == Token::Arrow {
+					self.pos += 1;
+
+					let return_type = self.consume_ident().unwrap();
+					Some(return_type.clone())
+				} else {
+					None
+				};
+
+				self.consume(Token::BraceOpen).unwrap();
+
+				let mut body = Vec::new();
+				while *self.at() != Token::BraceClose {
+					body.push(self.parse_statement());
+				}
+
+				self.consume(Token::BraceClose).unwrap();
+
+				ConstAssignmentVal::Function { args, return_type, body }
+			},
+			_ => ConstAssignmentVal::Expression(self.parse_expr()),
+		};
+
+		self.consume(Token::Semicolon).unwrap();
+
+		ConstAssignment(ident, val)
+	}
+
+	fn parse_expr(&mut self) -> Expression {
+		self.parse_additive()
+	}
+
+	fn parse_multiplicative(&mut self) -> Expression {
+		let mut left = self.parse_primary_expr();
+
+		while matches!(self.at(), Token::Star) {
+			let op = self.at().clone();
+			self.pos += 1;
+
+			let right = self.parse_primary_expr();
+			left = Expression::BinaryOperator { op, left: Box::new(left), right: Box::new(right) };
+		}
+
+		left
+	}
+
+	fn parse_additive(&mut self) -> Expression {
+		let mut left = self.parse_multiplicative();
+
+		while matches!(self.at(), Token::Plus) {
+			let op = self.at().clone();
+			self.pos += 1;
+
+			let right = self.parse_multiplicative();
+			left = Expression::BinaryOperator { op, left: Box::new(left), right: Box::new(right) };
+		}
+
+		left
+	}
+
+	fn parse_primary_expr(&mut self) -> Expression {
+		match self.tokens[self.pos] {
+			Token::NumberLiteral(n) => { self.pos += 1; Expression::NumberLiteral(n) },
+			Token::StringLiteral(ref s) => { self.pos += 1; Expression::StringLiteral(s.clone()) },
+
+			Token::Ident(ref ident) if self.tokens[self.pos + 1] == Token::ParenOpen => {
+				self.pos += 2; // ident + (
+				let mut args = Vec::new();
+				while *self.at() != Token::ParenClose {
+					args.push(self.parse_expr());
+
+					if *self.at() != Token::Comma { break }
+					self.pos += 1;
+				}
+
+				self.consume(Token::ParenClose).unwrap();
+
+				Expression::FunctionCall(ident.clone(), args)
+			},
+
+			Token::Ident(ref ident) => { self.pos += 1; Expression::Ident(ident.clone()) },
+
+			ref t => panic!("Unexpected token while parsing expression: {t:?}"),
+		}
+	}
+
+	fn parse_statement(&mut self) -> Statement {
+		match self.at() {
+			Token::Return => {
+				self.pos += 1;
+
+				let expr = self.parse_expr();
+				self.consume(Token::Semicolon).unwrap();
+
+				Statement::Return(expr)
+			},
+
+			_ => {
+				let expr = self.parse_expr();
+				self.consume(Token::Semicolon).unwrap();
+
+				Statement::Expression(expr)
+			},
+
+			// ref t => panic!("Unexpected token while parsing statement: {t:?}"),
+		}
 	}
 }
 
-fn parse_statement(tokens: &[Token], pos: &mut usize) -> Statement {
-	match tokens[*pos] {
-		Token::Return => {
-			*pos += 1;
-			let expr = parse_expr(tokens, pos);
-			
-			assert_eq!(tokens[*pos], Token::Semicolon);
-			*pos += 1;
-
-			Statement::Return(expr)
-		},
-
-		_ => {
-			let expr = parse_expr(tokens, pos);
-
-			assert_eq!(tokens[*pos], Token::Semicolon);
-			*pos += 1;
-
-			Statement::Expression(expr)
-		},
-
-		// ref t => panic!("Unexpected token while parsing statement: {t:?}"),
-	}
-}
-
-fn is_ident(token: &Token) -> bool { matches!(token, Token::Ident(_)) }
-fn expect_ident(token: &Token) -> Option<&String> { match token { Token::Ident(s) => Some(s), _ => None } }
+// fn is_ident(token: &Token) -> bool { matches!(token, Token::Ident(_)) }
+// fn expect_ident(token: &Token) -> Option<&String> { match token { Token::Ident(s) => Some(s), _ => None } }

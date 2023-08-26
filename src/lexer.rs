@@ -25,6 +25,15 @@ pub enum Token {
 	StringLiteral(String),
 }
 
+impl Token {
+	pub fn ident(&self) -> Option<String> {
+		match self {
+			Token::Ident(ident) => Some(ident.clone()),
+			_ => None,
+		}
+	}
+}
+
 pub fn lex(input: &str) -> Vec<Token> {
 	let mut pos = 0;
 	let mut tokens = Vec::new();
