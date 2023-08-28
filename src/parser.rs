@@ -27,6 +27,7 @@ pub enum ConstAssignmentVal {
 pub enum Operator {
 	Assign,
 	Add,
+	Subtract,
 	Multiply,
 	Deref,
 	IsEqual,
@@ -66,6 +67,7 @@ impl Operator {
 		match token {
 			Token::Equals => Some(Self::Assign),
 			Token::Plus => Some(Self::Add),
+			Token::Hyphen => Some(Self::Subtract),
 			Token::Star => Some(Self::Multiply),
 			Token::EqualsEquals => Some(Self::IsEqual),
 			Token::AngleBracketOpen => Some(Self::IsLessThan),
@@ -290,12 +292,11 @@ impl<'a> Parser<'a> {
 	parse_expr_pn!(parse_expr_p5, parse_expr_p6, Token::FIXME_DELETE(_)); // &
 
 	parse_expr_pn!(parse_expr_p6, parse_expr_p7, Token::EqualsEquals); // , !=
-
 	parse_expr_pn!(parse_expr_p7, parse_expr_p8, Token::AngleBracketOpen | Token::AngleBracketClose); // <= >=
+
 	parse_expr_pn!(parse_expr_p8, parse_expr_p9, Token::FIXME_DELETE(_)); // << >>
 
-	parse_expr_pn!(parse_expr_p9, parse_expr_p10, Token::Plus); // , -
-
+	parse_expr_pn!(parse_expr_p9, parse_expr_p10, Token::Plus | Token::Hyphen);
 	parse_expr_pn!(parse_expr_p10, parse_unary_rtl, Token::Star);
 
 	fn parse_unary_rtl(&mut self) -> Expression {

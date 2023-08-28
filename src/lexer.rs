@@ -16,6 +16,7 @@ pub enum Token {
 	Comma,
 
 	Plus,
+	Hyphen,
 	Star, // FIXME: maybe asterisk?
 	Equals,
 	EqualsEquals,
@@ -73,6 +74,7 @@ pub fn lex(input: &str) -> Vec<Token> {
 			',' => { tokens.push(Token::Comma); pos += 1 },
 			
 			'+' => { tokens.push(Token::Plus); pos += 1 },
+			'-' => { tokens.push(Token::Hyphen); pos += 1 },
 			'*' => { tokens.push(Token::Star); pos += 1 },
 
 			'=' if input[pos + 1] == '=' => { tokens.push(Token::EqualsEquals); pos += 2 },

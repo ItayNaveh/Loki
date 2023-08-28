@@ -157,6 +157,7 @@ fn serialize_operator(op: Operator) -> String {
 	match op {
 		Operator::Assign => '='.to_string(),
 		Operator::Add | Operator::UnaryPlus => '+'.to_string(),
+		Operator::Subtract => '-'.to_string(),
 		Operator::Multiply | Operator::Deref => '*'.to_string(),
 		Operator::IsEqual => "==".to_string(),
 		Operator::IsLessThan => '<'.to_string(),
