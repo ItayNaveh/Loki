@@ -257,10 +257,23 @@ macro_rules! parse_expr_pn {
 }
 
 impl<'a> Parser<'a> {
-	parse_expr_pn!(parse_expr_p0, parse_expr_p1, Token::Equals);
-	parse_expr_pn!(parse_expr_p1, parse_expr_p2, Token::EqualsEquals);
-	parse_expr_pn!(parse_expr_p2, parse_expr_p3, Token::Plus);
-	parse_expr_pn!(parse_expr_p3, parse_unary_rtl, Token::Star);
+	// FIXME: this is supposed to be rtl
+	parse_expr_pn!(parse_expr_p0, parse_expr_p1, Token::Equals); // , +=, ...
+
+	parse_expr_pn!(parse_expr_p1, parse_expr_p2, Token::FIXME_DELETE(_)); // ||
+	parse_expr_pn!(parse_expr_p2, parse_expr_p3, Token::FIXME_DELETE(_)); // &&
+	parse_expr_pn!(parse_expr_p3, parse_expr_p4, Token::FIXME_DELETE(_)); // |
+	parse_expr_pn!(parse_expr_p4, parse_expr_p5, Token::FIXME_DELETE(_)); // ^
+	parse_expr_pn!(parse_expr_p5, parse_expr_p6, Token::FIXME_DELETE(_)); // &
+
+	parse_expr_pn!(parse_expr_p6, parse_expr_p7, Token::EqualsEquals); // , !=
+
+	parse_expr_pn!(parse_expr_p7, parse_expr_p8, Token::FIXME_DELETE(_)); // < <= > >=
+	parse_expr_pn!(parse_expr_p8, parse_expr_p9, Token::FIXME_DELETE(_)); // << >>
+
+	parse_expr_pn!(parse_expr_p9, parse_expr_p10, Token::Plus); // , -
+
+	parse_expr_pn!(parse_expr_p10, parse_unary_rtl, Token::Star);
 
 	fn parse_unary_rtl(&mut self) -> Expression {
 		if matches!(self.at(), Token::Star | Token::Plus) {

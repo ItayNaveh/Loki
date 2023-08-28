@@ -29,6 +29,9 @@ pub enum Token {
 	Ident(String),
 	NumberLiteral(i64),
 	StringLiteral(String),
+
+	#[allow(non_camel_case_types, dead_code)]
+	FIXME_DELETE(std::convert::Infallible),
 }
 
 impl Token {
