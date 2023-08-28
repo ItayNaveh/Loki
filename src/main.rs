@@ -153,8 +153,9 @@ fn serialize_expression(expr: Expression) -> String {
 
 fn serialize_operator(op: Operator) -> String {
 	match op {
-		Operator::Equals => '='.to_string(),
-		Operator::Plus => '+'.to_string(),
+		Operator::Assign => '='.to_string(),
+		Operator::Add | Operator::UnaryPlus => '+'.to_string(),
 		Operator::Multiply | Operator::Deref => '*'.to_string(),
+		Operator::IsEqual => "==".to_string(),
 	}
 }

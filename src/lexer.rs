@@ -16,6 +16,7 @@ pub enum Token {
 	Plus,
 	Star, // FIXME: maybe asterisk?
 	Equals,
+	EqualsEquals,
 
 	ParenOpen,
 	ParenClose,
@@ -68,6 +69,8 @@ pub fn lex(input: &str) -> Vec<Token> {
 			
 			'+' => { tokens.push(Token::Plus); pos += 1 },
 			'*' => { tokens.push(Token::Star); pos += 1 },
+
+			'=' if input[pos + 1] == '=' => { tokens.push(Token::EqualsEquals); pos += 2 },
 			'=' => { tokens.push(Token::Equals); pos += 1 },
 
 			'(' => { tokens.push(Token::ParenOpen); pos += 1 },

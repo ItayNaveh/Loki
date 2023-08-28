@@ -25,10 +25,12 @@ pub enum ConstAssignmentVal {
 
 #[derive(Debug)]
 pub enum Operator {
-	Equals,
-	Plus,
+	Assign,
+	Add,
 	Multiply,
 	Deref,
+	IsEqual,
+	UnaryPlus,
 }
 
 #[derive(Debug)]
@@ -57,16 +59,17 @@ pub fn parse(tokens: Vec<Token>) -> AstRoot {
 impl Operator {
 	fn to_binary_op(token: &Token) -> Option<Self> {
 		match token {
-			Token::Equals => Some(Self::Equals),
-			Token::Plus => Some(Self::Plus),
+			Token::Equals => Some(Self::Assign),
+			Token::Plus => Some(Self::Add),
 			Token::Star => Some(Self::Multiply),
+			Token::EqualsEquals => Some(Self::IsEqual),
 			_ => None,
 		}
 	}
 
 	fn to_unary_op(token: &Token) -> Option<Self> {
 		match token {
-			Token::Plus => Some(Self::Plus),
+			Token::Plus => Some(Self::UnaryPlus),
 			Token::Star => Some(Self::Deref),
 			_ => None,
 		}
@@ -241,8 +244,9 @@ macro_rules! parse_expr_pn {
 
 impl<'a> Parser<'a> {
 	parse_expr_pn!(parse_expr_p0, parse_expr_p1, Token::Equals);
-	parse_expr_pn!(parse_expr_p1, parse_expr_p2, Token::Plus);
-	parse_expr_pn!(parse_expr_p2, parse_unary_rtl, Token::Star);
+	parse_expr_pn!(parse_expr_p1, parse_expr_p2, Token::EqualsEquals);
+	parse_expr_pn!(parse_expr_p2, parse_expr_p3, Token::Plus);
+	parse_expr_pn!(parse_expr_p3, parse_unary_rtl, Token::Star);
 
 	fn parse_unary_rtl(&mut self) -> Expression {
 		if matches!(self.at(), Token::Star | Token::Plus) {
