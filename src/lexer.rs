@@ -6,6 +6,7 @@ pub enum Token {
 	Let,
 	If,
 	While,
+	Struct,
 
 	// FIXME: maybe it should be 2 Colon tokens
 	// https://odin-lang.org/docs/faq/#what-does--mean-1
@@ -14,6 +15,7 @@ pub enum Token {
 	Colon,
 	Semicolon,
 	Comma,
+	Period,
 
 	Plus,
 	Hyphen,
@@ -72,6 +74,7 @@ pub fn lex(input: &str) -> Vec<Token> {
 			':' => { tokens.push(Token::Colon); pos += 1 },
 			';' => { tokens.push(Token::Semicolon); pos += 1 },
 			',' => { tokens.push(Token::Comma); pos += 1 },
+			'.' => { tokens.push(Token::Period); pos += 1 },
 			
 			'+' => { tokens.push(Token::Plus); pos += 1 },
 			'-' => { tokens.push(Token::Hyphen); pos += 1 },
@@ -109,6 +112,7 @@ pub fn lex(input: &str) -> Vec<Token> {
 					"let" => Token::Let,
 					"if" => Token::If,
 					"while" => Token::While,
+					"struct" => Token::Struct,
 					_ => Token::Ident(ident),
 				});
 			},

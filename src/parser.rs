@@ -20,6 +20,7 @@ pub struct ConstAssignment(pub String, pub ConstAssignmentVal);
 #[derive(Debug)]
 pub enum ConstAssignmentVal {
 	Function { args: Vec<(String, String)>, return_type: Option<String>, body: Vec<Statement> },
+	Struct(Vec<(String, String)>),
 	Expression(Expression),
 }
 
@@ -34,6 +35,7 @@ pub enum Operator {
 	UnaryPlus,
 	IsLessThan,
 	IsGreaterThan,
+	MemberAccess,
 }
 
 #[derive(Debug)]
@@ -51,7 +53,7 @@ pub enum Expression {
 #[derive(Debug)]
 pub enum Statement {
 	Return(Expression),
-	Let(String, String, Expression),
+	Let(String, String, Option<Expression>),
 	// TODO: make if and while an expression
 	If(Expression, Box<Statement>),
 	While(Expression, Box<Statement>),
@@ -75,6 +77,7 @@ impl Operator {
 			Token::EqualsEquals => Some(Self::IsEqual),
 			Token::AngleBracketOpen => Some(Self::IsLessThan),
 			Token::AngleBracketClose => Some(Self::IsGreaterThan),
+			Token::Period => Some(Self::MemberAccess),
 			_ => None,
 		}
 	}
@@ -86,6 +89,10 @@ impl Operator {
 			_ => None,
 		}
 	}
+}
+
+macro_rules! consume_unwrap {
+	($self:ident, $token:expr) => { $self.consume(&$token).expect(&format!("Expected {:?} but found {:?}", $token, $self.at())) };
 }
 
 struct Parser<'a> {
@@ -122,8 +129,8 @@ impl<'a> Parser<'a> {
 	}
 
 	#[must_use]
-	fn consume(&mut self, token: Token) -> Option<()> {
-		if std::mem::discriminant(self.at()) == std::mem::discriminant(&token) {
+	fn consume(&mut self, token: &Token) -> Option<()> {
+		if std::mem::discriminant(self.at()) == std::mem::discriminant(token) {
 			self.pos += 1;
 			Some(())
 		} else {
@@ -131,16 +138,20 @@ impl<'a> Parser<'a> {
 		}
 	}
 
+	// fn consume_unwrap(&mut self, token: Token) {
+	// 	self.consume(&token).expect(&format!("Expected {token:?} but found {:?}", self.at()))
+	// }
+
 	fn parse_const_assignment(&mut self) -> ConstAssignment {
 		let ident = self.consume_ident().unwrap();
 
-		self.consume(Token::ColonColon).unwrap();
+		consume_unwrap!(self, Token::ColonColon);
 
 		let val = match self.at() {
 			Token::Fn => {
 				self.pos += 1;
 
-				self.consume(Token::ParenOpen).unwrap();
+				consume_unwrap!(self, Token::ParenOpen);
 
 				let mut args = Vec::new();
 				while self.pos < self.tokens.len() {
@@ -148,17 +159,17 @@ impl<'a> Parser<'a> {
 
 					let name = self.consume_ident().unwrap();
 
-					self.consume(Token::Colon).unwrap();
+					consume_unwrap!(self, Token::Colon);
 
 					let type_ = self.parse_type();
 
 					args.push((name.clone(), type_.clone()));
 					if *self.at() == Token::ParenClose { break }
 
-					self.consume(Token::Comma).expect("Missing comma between function parameters");
+					self.consume(&Token::Comma).expect("Missing comma between function parameters");
 				}
 
-				self.consume(Token::ParenClose).unwrap();
+				consume_unwrap!(self, Token::ParenClose);
 
 				let return_type = if *self.at() == Token::Arrow {
 					self.pos += 1;
@@ -169,7 +180,7 @@ impl<'a> Parser<'a> {
 					None
 				};
 
-				self.consume(Token::BraceOpen).unwrap();
+				consume_unwrap!(self, Token::BraceOpen);
 
 				// AA: mayhaps use parse_statement?
 				let mut body = Vec::new();
@@ -177,14 +188,40 @@ impl<'a> Parser<'a> {
 					body.push(self.parse_statement());
 				}
 
-				self.consume(Token::BraceClose).unwrap();
+				consume_unwrap!(self, Token::BraceClose);
 
 				ConstAssignmentVal::Function { args, return_type, body }
 			},
+
+			Token::Struct => {
+				self.pos += 1;
+				consume_unwrap!(self, Token::BraceOpen);
+
+				let mut members = Vec::new();
+				while self.pos < self.tokens.len() {
+					if *self.at() == Token::BraceClose { break }
+
+					let name = self.consume_ident().unwrap();
+
+					consume_unwrap!(self, Token::Colon);
+
+					let type_ = self.parse_type();
+
+					members.push((name.clone(), type_.clone()));
+
+					if *self.at() == Token::BraceClose { break }
+					self.consume(&Token::Comma).expect("Missing comma between struct members");
+				}
+
+				consume_unwrap!(self, Token::BraceClose);
+
+				ConstAssignmentVal::Struct(members)
+			},
+
 			_ => ConstAssignmentVal::Expression(self.parse_expr()),
 		};
 
-		self.consume(Token::Semicolon).expect("Missing ; after constant assignment");
+		self.consume(&Token::Semicolon).expect("Missing ; after constant assignment");
 
 		ConstAssignment(ident, val)
 	}
@@ -210,7 +247,7 @@ impl<'a> Parser<'a> {
 				self.pos += 1;
 
 				let expr = self.parse_expr();
-				self.consume(Token::Semicolon).unwrap();
+				consume_unwrap!(self, Token::Semicolon);
 
 				Statement::Return(expr)
 			},
@@ -219,14 +256,18 @@ impl<'a> Parser<'a> {
 				self.pos += 1;
 
 				let name = self.consume_ident().unwrap();
-				self.consume(Token::Colon).expect("No explicit type hint, type inference isn't implemented (yet)");
+				self.consume(&Token::Colon).expect("No explicit type hint, type inference isn't implemented (yet)");
 				
 				let type_ = self.parse_type();
 
-				self.consume(Token::Equals).unwrap();
-
-				let val = self.parse_expr();
-				self.consume(Token::Semicolon).unwrap();
+				let val = if *self.at() == Token::Equals {
+					self.pos += 1;
+					Some(self.parse_expr())
+				} else {
+					None
+				};
+				
+				consume_unwrap!(self, Token::Semicolon);
 
 				Statement::Let(name, type_, val)
 			},
@@ -234,9 +275,9 @@ impl<'a> Parser<'a> {
 			Token::If => {
 				self.pos += 1;
 
-				self.consume(Token::ParenOpen).unwrap();
+				consume_unwrap!(self, Token::ParenOpen);
 				let cond = self.parse_expr();
-				self.consume(Token::ParenClose).unwrap();
+				consume_unwrap!(self, Token::ParenClose);
 
 				let body = self.parse_statement();
 
@@ -246,9 +287,9 @@ impl<'a> Parser<'a> {
 			Token::While => {
 				self.pos += 1;
 
-				self.consume(Token::ParenOpen).unwrap();
+				consume_unwrap!(self, Token::ParenOpen);
 				let cond = self.parse_expr();
-				self.consume(Token::ParenClose).unwrap();
+				consume_unwrap!(self, Token::ParenClose);
 
 				let body = self.parse_statement();
 
@@ -263,14 +304,14 @@ impl<'a> Parser<'a> {
 					body.push(self.parse_statement());
 				}
 
-				self.consume(Token::BraceClose).unwrap();
+				consume_unwrap!(self, Token::BraceClose);
 
 				Statement::Compound(body)
 			},
 
 			_ => {
 				let expr = self.parse_expr();
-				self.consume(Token::Semicolon).unwrap();
+				consume_unwrap!(self, Token::Semicolon);
 
 				Statement::Expression(expr)
 			},
@@ -316,6 +357,8 @@ impl<'a> Parser<'a> {
 	parse_expr_pn!(parse_expr_p9, parse_expr_p10, Token::Plus | Token::Hyphen);
 	parse_expr_pn!(parse_expr_p10, parse_unary_rtl, Token::Star);
 
+	parse_expr_pn!(parse_expr_p11, parse_primary_expr, Token::Period);
+
 	fn parse_unary_rtl(&mut self) -> Expression {
 		if matches!(self.at(), Token::Star | Token::Plus) {
 			let op = Operator::to_unary_op(self.at()).expect(&format!("Could not convert {:?} into a unary operator", self.at()));
@@ -325,7 +368,7 @@ impl<'a> Parser<'a> {
 			return Expression::UnaryOperator { op, operand: Box::new(self.parse_unary_rtl()) };
 		}
 
-		self.parse_primary_expr()
+		self.parse_expr_p11()
 	}
 
 	fn parse_primary_expr(&mut self) -> Expression {
@@ -336,7 +379,7 @@ impl<'a> Parser<'a> {
 			Token::ParenOpen => {
 				self.pos += 1;
 				let expr = self.parse_expr();
-				self.consume(Token::ParenClose).unwrap();
+				consume_unwrap!(self, Token::ParenClose);
 
 				expr
 			},
@@ -352,7 +395,7 @@ impl<'a> Parser<'a> {
 					self.pos += 1;
 				}
 
-				self.consume(Token::ParenClose).unwrap();
+				consume_unwrap!(self, Token::ParenClose);
 
 				Expression::FunctionCall(ident.clone(), args)
 			},

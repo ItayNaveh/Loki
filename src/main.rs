@@ -118,7 +118,12 @@ fn compile(input_file: &str) -> String {
 				}
 			},
 
-			e => unimplemented!("{e:?}"),
+			ConstAssignmentVal::Expression(_) => unimplemented!(),
+
+			ConstAssignmentVal::Struct(members) => {
+				let members = members.into_iter().map(|(name, type_)| type_ + " " + &name + ";").collect::<String>();
+				write!(program, "typedef struct {{ {members} }} {name};", name = const_assignment.0).unwrap();
+			},
 		}
 	}
 
@@ -130,7 +135,8 @@ fn compile(input_file: &str) -> String {
 fn serialize_statement(statement: Statement) -> String {
 	match statement {
 		Statement::Return(expr) => format!("return {};", serialize_expression(expr)),
-		Statement::Let(name, type_, val) => format!("{type_} {name} = {};", serialize_expression(val)),
+		Statement::Let(name, type_, Some(val)) => format!("{type_} {name} = {};", serialize_expression(val)),
+		Statement::Let(name, type_, None) => format!("{type_} {name};"),
 		Statement::If(cond, body) => format!("if ({}) {}", serialize_expression(cond), serialize_statement(*body)),
 		Statement::While(cond, body) => format!("while ({}) {}", serialize_expression(cond), serialize_statement(*body)),
 
@@ -164,5 +170,6 @@ fn serialize_operator(op: Operator) -> String {
 		Operator::IsEqual => "==".to_string(),
 		Operator::IsLessThan => '<'.to_string(),
 		Operator::IsGreaterThan => '>'.to_string(),
+		Operator::MemberAccess => '.'.to_string(),
 	}
 }
