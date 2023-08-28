@@ -68,7 +68,7 @@ fn main() {
 				.arg("-x").arg("c")
 				.arg("-")
 				.arg("-o").arg(output_file)
-				.args(["-Wall", "-Wextra", "-pedantic"])
+				.args(["-Wall", "-Wextra", "-pedantic", "-Wno-parentheses-equality"])
 				.stdin(Stdio::piped()).spawn().unwrap();
 			let mut stdin = clang.stdin.take().unwrap();
 			std::thread::spawn(move || {
