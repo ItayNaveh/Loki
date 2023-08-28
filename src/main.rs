@@ -96,6 +96,21 @@ fn compile(input_file: &str) -> String {
 	// println!("{ast:#?}");
 
 	let mut program = "".to_string();
+
+	for ca in ast.0.iter() {
+		match &ca.1 {
+			ConstAssignmentVal::Function { args, return_type, .. } => {
+				let args = args.into_iter().map(|(name, type_)| type_.to_owned() + " " + &name).collect::<Vec<String>>().join(",");
+				write!(program,
+					"{ret} {name} ({args});",
+					ret = match return_type { Some(t) => t, None => "void" },
+					name = ca.0,
+				).unwrap();
+			},
+			_ => (),
+		}
+	}
+
 	for const_assignment in ast.0 {
 		match const_assignment.1 {
 			ConstAssignmentVal::Function { args, return_type, body } => {
