@@ -59,6 +59,7 @@ fn main() {
 	let compiler_output = compile(&input_file);
 	match emit {
 		Emit::C => std::fs::write(output_file, compiler_output).unwrap(),
+
 		Emit::BinClang => {
 			use std::process::*;
 			use std::io::Write;
@@ -67,6 +68,7 @@ fn main() {
 				.arg("-x").arg("c")
 				.arg("-")
 				.arg("-o").arg(output_file)
+				.args(["-Wall", "-Wextra", "-pedantic"])
 				.stdin(Stdio::piped()).spawn().unwrap();
 			let mut stdin = clang.stdin.take().unwrap();
 			std::thread::spawn(move || {
@@ -119,6 +121,8 @@ fn compile(input_file: &str) -> String {
 			e => unimplemented!("{e:?}"),
 		}
 	}
+
+	program.write_char('\n').unwrap();
 
 	return program;
 }
