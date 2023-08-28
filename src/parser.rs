@@ -144,7 +144,7 @@ impl<'a> Parser<'a> {
 
 					self.consume(Token::Colon).unwrap();
 
-					let type_ = self.consume_ident().unwrap();
+					let type_ = self.parse_type();
 
 					args.push((name.clone(), type_.clone()));
 					if *self.at() == Token::ParenClose { break }
@@ -157,7 +157,7 @@ impl<'a> Parser<'a> {
 				let return_type = if *self.at() == Token::Arrow {
 					self.pos += 1;
 
-					let return_type = self.consume_ident().unwrap();
+					let return_type = self.parse_type();
 					Some(return_type)
 				} else {
 					None
@@ -182,6 +182,17 @@ impl<'a> Parser<'a> {
 		ConstAssignment(ident, val)
 	}
 
+	// FIXME: this is a bit of a hack, need to properly parse types
+	fn parse_type(&mut self) -> String {
+		let mut type_ = self.consume_ident().unwrap();
+		while *self.at() == Token::Star {
+			type_.push('*');
+			self.pos += 1;
+		}
+
+		type_
+	}
+
 	fn parse_expr(&mut self) -> Expression {
 		self.parse_expr_p0()
 	}
@@ -203,12 +214,7 @@ impl<'a> Parser<'a> {
 				let name = self.consume_ident().unwrap();
 				self.consume(Token::Colon).unwrap();
 				
-				let mut type_ = self.consume_ident().unwrap();
-				// TODO: this is a bit of a hack, need to properly parse types
-				while *self.at() == Token::Star {
-					type_.push('*');
-					self.pos += 1;
-				}
+				let type_ = self.parse_type();
 
 				self.consume(Token::Equals).unwrap();
 
