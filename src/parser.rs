@@ -55,6 +55,9 @@ pub enum Statement {
 	// TODO: make if and while an expression
 	If(Expression, Box<Statement>),
 	While(Expression, Box<Statement>),
+
+	// TODO: make this an expr
+	Compound(Vec<Statement>),
 	Expression(Expression),
 }
 
@@ -168,6 +171,7 @@ impl<'a> Parser<'a> {
 
 				self.consume(Token::BraceOpen).unwrap();
 
+				// AA: mayhaps use parse_statement?
 				let mut body = Vec::new();
 				while *self.at() != Token::BraceClose {
 					body.push(self.parse_statement());
@@ -215,7 +219,7 @@ impl<'a> Parser<'a> {
 				self.pos += 1;
 
 				let name = self.consume_ident().unwrap();
-				self.consume(Token::Colon).unwrap();
+				self.consume(Token::Colon).expect("No explicit type hint, type inference isn't implemented (yet)");
 				
 				let type_ = self.parse_type();
 
@@ -249,6 +253,19 @@ impl<'a> Parser<'a> {
 				let body = self.parse_statement();
 
 				Statement::While(cond, Box::new(body))
+			},
+
+			Token::BraceOpen => {
+				self.pos += 1;
+
+				let mut body = Vec::new();
+				while *self.at() != Token::BraceClose {
+					body.push(self.parse_statement());
+				}
+
+				self.consume(Token::BraceClose).unwrap();
+
+				Statement::Compound(body)
 			},
 
 			_ => {

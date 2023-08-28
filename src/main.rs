@@ -133,6 +133,8 @@ fn serialize_statement(statement: Statement) -> String {
 		Statement::Let(name, type_, val) => format!("{type_} {name} = {};", serialize_expression(val)),
 		Statement::If(cond, body) => format!("if ({}) {}", serialize_expression(cond), serialize_statement(*body)),
 		Statement::While(cond, body) => format!("while ({}) {}", serialize_expression(cond), serialize_statement(*body)),
+
+		Statement::Compound(body) => format!("{{ {} }}", body.into_iter().map(serialize_statement).collect::<String>()),
 		Statement::Expression(expr) => serialize_expression(expr) + ";",
 	}
 }
