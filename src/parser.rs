@@ -155,7 +155,7 @@ impl<'a> Parser<'a> {
 					args.push((name.clone(), type_.clone()));
 					if *self.at() == Token::ParenClose { break }
 
-					self.consume(Token::Comma).unwrap();
+					self.consume(Token::Comma).expect("Missing comma between function parameters");
 				}
 
 				self.consume(Token::ParenClose).unwrap();
@@ -184,7 +184,7 @@ impl<'a> Parser<'a> {
 			_ => ConstAssignmentVal::Expression(self.parse_expr()),
 		};
 
-		self.consume(Token::Semicolon).unwrap();
+		self.consume(Token::Semicolon).expect("Missing ; after constant assignment");
 
 		ConstAssignment(ident, val)
 	}
@@ -318,7 +318,7 @@ impl<'a> Parser<'a> {
 
 	fn parse_unary_rtl(&mut self) -> Expression {
 		if matches!(self.at(), Token::Star | Token::Plus) {
-			let op = Operator::to_unary_op(self.at()).unwrap();
+			let op = Operator::to_unary_op(self.at()).expect(&format!("Could not convert {:?} into a unary operator", self.at()));
 			self.pos += 1;
 
 			// AA: should this be a parse_unary_rtl or parse_expr?
