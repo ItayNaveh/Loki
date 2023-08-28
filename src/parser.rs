@@ -51,8 +51,9 @@ pub enum Expression {
 pub enum Statement {
 	Return(Expression),
 	Let(String, String, Expression),
-	// TODO: make if an expression
+	// TODO: make if and while an expression
 	If(Expression, Box<Statement>),
+	While(Expression, Box<Statement>),
 	Expression(Expression),
 }
 
@@ -234,6 +235,18 @@ impl<'a> Parser<'a> {
 				let body = self.parse_statement();
 
 				Statement::If(cond, Box::new(body))
+			},
+
+			Token::While => {
+				self.pos += 1;
+
+				self.consume(Token::ParenOpen).unwrap();
+				let cond = self.parse_expr();
+				self.consume(Token::ParenClose).unwrap();
+
+				let body = self.parse_statement();
+
+				Statement::While(cond, Box::new(body))
 			},
 
 			_ => {
