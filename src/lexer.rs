@@ -21,6 +21,8 @@ pub enum Token {
 	ParenClose,
 	BraceOpen,
 	BraceClose,
+	AngleBracketOpen,
+	AngleBracketClose,
 
 	Ident(String),
 	NumberLiteral(i64),
@@ -72,6 +74,8 @@ pub fn lex(input: &str) -> Vec<Token> {
 			')' => { tokens.push(Token::ParenClose); pos += 1 },
 			'{' => { tokens.push(Token::BraceOpen); pos += 1 },
 			'}' => { tokens.push(Token::BraceClose); pos += 1 },
+			'<' => { tokens.push(Token::AngleBracketOpen); pos += 1 },
+			'>' => { tokens.push(Token::AngleBracketClose); pos += 1 },
 
 			// TODO: handle things like \n, \"
 			'"' => {
