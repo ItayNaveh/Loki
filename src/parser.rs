@@ -174,48 +174,75 @@ impl<'a> Parser<'a> {
 	}
 
 	fn parse_expr(&mut self) -> Expression {
-		self.parse_assignment()
+		self.parse_expr_p0()
 	}
 
-	fn parse_assignment(&mut self) -> Expression {
-		let mut left = self.parse_additive();
+	fn parse_statement(&mut self) -> Statement {
+		match self.at() {
+			Token::Return => {
+				self.pos += 1;
 
-		while *self.at() == Token::Equals {
-			self.pos += 1;
-			let right = self.parse_additive();
-			left = Expression::BinaryOperator { op: Operator::Equals, left: Box::new(left), right: Box::new(right) };
+				let expr = self.parse_expr();
+				self.consume(Token::Semicolon).unwrap();
+
+				Statement::Return(expr)
+			},
+
+			Token::Let => {
+				self.pos += 1;
+
+				let name = self.consume_ident().unwrap();
+				self.consume(Token::Colon).unwrap();
+				
+				let mut type_ = self.consume_ident().unwrap();
+				// TODO: this is a bit of a hack, need to properly parse types
+				while *self.at() == Token::Star {
+					type_.push('*');
+					self.pos += 1;
+				}
+
+				self.consume(Token::Equals).unwrap();
+
+				let val = self.parse_expr();
+				self.consume(Token::Semicolon).unwrap();
+
+				Statement::Let(name, type_, val)
+			},
+
+			_ => {
+				let expr = self.parse_expr();
+				self.consume(Token::Semicolon).unwrap();
+
+				Statement::Expression(expr)
+			},
+
+			// ref t => panic!("Unexpected token while parsing statement: {t:?}"),
 		}
-
-		return left;
 	}
+}
 
-	fn parse_additive(&mut self) -> Expression {
-		let mut left = self.parse_multiplicative();
+macro_rules! parse_expr_pn {
+	($name:ident, $higher_name:ident, $( $pattern:pat_param )|+) => {
+		fn $name(&mut self) -> Expression {
+			let mut left = self.$higher_name();
 
-		while matches!(self.at(), Token::Plus) {
-			let op = Operator::to_binary_op(self.at()).unwrap();
-			self.pos += 1;
+			while matches!(self.at(), $($pattern)|+) {
+				let op = Operator::to_binary_op(self.at()).unwrap();
+				self.pos += 1;
 
-			let right = self.parse_multiplicative();
-			left = Expression::BinaryOperator { op, left: Box::new(left), right: Box::new(right) };
+				let right = self.$higher_name();
+				left = Expression::BinaryOperator { op, left: Box::new(left), right: Box::new(right) };
+			}
+
+			return left;
 		}
+	};
+}
 
-		left
-	}
-
-	fn parse_multiplicative(&mut self) -> Expression {
-		let mut left = self.parse_unary_rtl();
-
-		while matches!(self.at(), Token::Star) {
-			let op = Operator::to_binary_op(self.at()).unwrap();
-			self.pos += 1;
-
-			let right = self.parse_unary_rtl();
-			left = Expression::BinaryOperator { op, left: Box::new(left), right: Box::new(right) };
-		}
-
-		left
-	}
+impl<'a> Parser<'a> {
+	parse_expr_pn!(parse_expr_p0, parse_expr_p1, Token::Equals);
+	parse_expr_pn!(parse_expr_p1, parse_expr_p2, Token::Plus);
+	parse_expr_pn!(parse_expr_p2, parse_unary_rtl, Token::Star);
 
 	fn parse_unary_rtl(&mut self) -> Expression {
 		if matches!(self.at(), Token::Star | Token::Plus) {
@@ -261,49 +288,6 @@ impl<'a> Parser<'a> {
 			Token::Ident(ref ident) => { self.pos += 1; Expression::Ident(ident.clone()) },
 
 			ref t => panic!("Unexpected token while parsing expression: {t:?}"),
-		}
-	}
-
-	fn parse_statement(&mut self) -> Statement {
-		match self.at() {
-			Token::Return => {
-				self.pos += 1;
-
-				let expr = self.parse_expr();
-				self.consume(Token::Semicolon).unwrap();
-
-				Statement::Return(expr)
-			},
-
-			Token::Let => {
-				self.pos += 1;
-
-				let name = self.consume_ident().unwrap();
-				self.consume(Token::Colon).unwrap();
-				
-				let mut type_ = self.consume_ident().unwrap();
-				// TODO: this is a bit of a hack, need to properly parse types
-				while *self.at() == Token::Star {
-					type_.push('*');
-					self.pos += 1;
-				}
-
-				self.consume(Token::Equals).unwrap();
-
-				let val = self.parse_expr();
-				self.consume(Token::Semicolon).unwrap();
-
-				Statement::Let(name, type_, val)
-			},
-
-			_ => {
-				let expr = self.parse_expr();
-				self.consume(Token::Semicolon).unwrap();
-
-				Statement::Expression(expr)
-			},
-
-			// ref t => panic!("Unexpected token while parsing statement: {t:?}"),
 		}
 	}
 }
