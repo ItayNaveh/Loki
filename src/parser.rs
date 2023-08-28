@@ -31,6 +31,8 @@ pub enum Operator {
 	Deref,
 	IsEqual,
 	UnaryPlus,
+	IsLessThan,
+	IsGreaterThan,
 }
 
 #[derive(Debug)]
@@ -65,6 +67,8 @@ impl Operator {
 			Token::Plus => Some(Self::Add),
 			Token::Star => Some(Self::Multiply),
 			Token::EqualsEquals => Some(Self::IsEqual),
+			Token::AngleBracketOpen => Some(Self::IsLessThan),
+			Token::AngleBracketClose => Some(Self::IsGreaterThan),
 			_ => None,
 		}
 	}
@@ -244,7 +248,7 @@ macro_rules! parse_expr_pn {
 			let mut left = self.$higher_name();
 
 			while matches!(self.at(), $($pattern)|+) {
-				let op = Operator::to_binary_op(self.at()).unwrap();
+				let op = Operator::to_binary_op(self.at()).expect(&format!("Could not convert {:?} into a binary operator", self.at()));
 				self.pos += 1;
 
 				let right = self.$higher_name();
@@ -268,7 +272,7 @@ impl<'a> Parser<'a> {
 
 	parse_expr_pn!(parse_expr_p6, parse_expr_p7, Token::EqualsEquals); // , !=
 
-	parse_expr_pn!(parse_expr_p7, parse_expr_p8, Token::FIXME_DELETE(_)); // < <= > >=
+	parse_expr_pn!(parse_expr_p7, parse_expr_p8, Token::AngleBracketOpen | Token::AngleBracketClose); // <= >=
 	parse_expr_pn!(parse_expr_p8, parse_expr_p9, Token::FIXME_DELETE(_)); // << >>
 
 	parse_expr_pn!(parse_expr_p9, parse_expr_p10, Token::Plus); // , -
