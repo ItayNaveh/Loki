@@ -131,6 +131,7 @@ fn serialize_statement(statement: Statement) -> String {
 	match statement {
 		Statement::Return(expr) => format!("return {};", serialize_expression(expr)),
 		Statement::Let(name, type_, val) => format!("{type_} {name} = {};", serialize_expression(val)),
+		Statement::If(cond, body) => format!("if ({}) {}", serialize_expression(cond), serialize_statement(*body)),
 		Statement::Expression(expr) => serialize_expression(expr) + ";",
 	}
 }

@@ -49,6 +49,8 @@ pub enum Expression {
 pub enum Statement {
 	Return(Expression),
 	Let(String, String, Expression),
+	// TODO: make if an expression
+	If(Expression, Box<Statement>),
 	Expression(Expression),
 }
 
@@ -210,6 +212,18 @@ impl<'a> Parser<'a> {
 				self.consume(Token::Semicolon).unwrap();
 
 				Statement::Let(name, type_, val)
+			},
+
+			Token::If => {
+				self.pos += 1;
+
+				self.consume(Token::ParenOpen).unwrap();
+				let cond = self.parse_expr();
+				self.consume(Token::ParenClose).unwrap();
+
+				let body = self.parse_statement();
+
+				Statement::If(cond, Box::new(body))
 			},
 
 			_ => {

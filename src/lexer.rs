@@ -4,6 +4,7 @@ pub enum Token {
 	Fn,
 	Return,
 	Let,
+	If,
 
 	// FIXME: maybe it should be 2 Colon tokens
 	// https://odin-lang.org/docs/faq/#what-does--mean-1
@@ -100,6 +101,7 @@ pub fn lex(input: &str) -> Vec<Token> {
 					"fn" => Token::Fn,
 					"return" => Token::Return,
 					"let" => Token::Let,
+					"if" => Token::If,
 					_ => Token::Ident(ident),
 				});
 			},
